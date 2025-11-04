@@ -25,10 +25,10 @@
 
     document.getElementById('join').onclick = async () => {
       const room = document.getElementById('room').value || 'demo';
+      localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       ws = new WebSocket(`${wsBase}/ws?room=${room}`);
       ws.onmessage = handleMessage;
       ws.onopen = async () => {
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         document.getElementById('status').textContent = `Joined room "${room}".`;
         document.getElementById('join').disabled = true;
         document.getElementById('leave').disabled = false;
