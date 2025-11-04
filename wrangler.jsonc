@@ -6,6 +6,7 @@
   "migrations": [
     {
       "new_sqlite_classes": ["RoomDO"],
+      "deleted_classes": ["Global"],
       "tag": "v1"
     }
   ],
