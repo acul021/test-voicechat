@@ -4,7 +4,7 @@
   "main": "src/server/index.ts",
   "name": "test-voicechat",
   "routes": [
-    {"pattern": "voice.acul21.de", "zone_id": "4818465905a5cdd4edbdb11dbac80c37"}
+    {"pattern": "voice.acul21.de", "zone_id": "29cbe6c406d718d67e4ffa1d5afde9b7"}
   ],
   "migrations": [
     {
