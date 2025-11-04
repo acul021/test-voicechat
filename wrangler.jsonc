@@ -1,15 +1,17 @@
 {
+  "$schema": "./node_modules/wrangler/config-schema.json",
   "compatibility_date": "2025-10-08",
   "main": "src/server/index.ts",
   "name": "test-voicechat",
   "migrations": [
     {
-      "new_sqlite_classes": ["Globe"],
+      "new_sqlite_classes": ["RoomDO"],
       "tag": "v1"
     }
   ],
   "assets": {
-    "directory": "public"
+    "directory": "public",
+    "binding": "ASSETS"
   },
   "build": {
     "command": "npx esbuild src/client/index.tsx --bundle --outdir=public/dist --splitting --sourcemap --format=esm"
@@ -17,13 +19,12 @@
   "durable_objects": {
     "bindings": [
       {
-        "class_name": "Globe",
-        "name": "Globe"
+        "class_name": "RoomDO",
+        "name": "ROOM"
       }
     ]
   },
   "observability": {
     "enabled": true
-  },
-  "upload_source_maps": true
+  }
 }

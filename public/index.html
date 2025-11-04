@@ -1,27 +1,116 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
-    />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Globe</title>
-    <!-- Favicon -->
-    <link rel="icon" href="/favicon.ico" sizes="any" />
-    <!-- Primary Meta Tags -->
-    <meta name="title" content="PartyServer" />
-    <meta name="description" content="Everything's better with friends!" />
-    <meta name="author" content="PartyServer" />
-    <!-- Theme Colour -->
-    <meta name="theme-color" content="#ffffff" />
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>WebRTC Voice Chat (Cloudflare Durable Object)</title>
+  <style>
+    body { font-family: sans-serif; margin: 2em; }
+    input, button { margin: 4px; padding: 6px; }
+    .peer { display: inline-block; margin: 3px; padding: 4px 8px; border: 1px solid #ddd; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h2>WebRTC Voice Chat</h2>
+  <input id="room" placeholder="Room name" />
+  <button id="join">Join</button>
+  <button id="leave" disabled>Leave</button>
+  <div id="status">Disconnected.</div>
+  <div><strong>Peers:</strong> <span id="peers"></span></div>
 
-    <link rel="stylesheet" href="/normalize.css" />
-    <link rel="stylesheet" href="/dist/index.css" />
-  </head>
-  <body>
-    <div id="root">Loading...</div>
-    <script type="module" src="/dist/index.js"></script>
-  </body>
+  <script>
+    const wsBase = location.origin.replace(/^http/, 'ws');
+    const peers = new Map();
+    const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+    let ws, localStream, myId;
+
+    document.getElementById('join').onclick = async () => {
+      const room = document.getElementById('room').value || 'demo';
+      ws = new WebSocket(`${wsBase}/ws?room=${room}`);
+      ws.onmessage = handleMessage;
+      ws.onopen = async () => {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        document.getElementById('status').textContent = `Joined room "${room}".`;
+        document.getElementById('join').disabled = true;
+        document.getElementById('leave').disabled = false;
+      };
+    };
+
+    document.getElementById('leave').onclick = () => location.reload();
+
+    function handleMessage(evt) {
+      const msg = JSON.parse(evt.data);
+      if (msg.type === 'welcome') {
+        myId = msg.id;
+        msg.peers.forEach(p => createPeer(p, true));
+      } else if (msg.type === 'peer-join') {
+        createPeer(msg.id, false);
+      } else if (msg.type === 'peer-leave') {
+        removePeer(msg.id);
+      } else if (msg.type === 'signal') {
+        handleSignal(msg.from, msg.data);
+      }
+      updatePeers();
+    }
+
+    function updatePeers() {
+      const el = document.getElementById('peers');
+      el.innerHTML = '';
+      for (const id of peers.keys()) {
+        const span = document.createElement('span');
+        span.className = 'peer';
+        span.textContent = id.slice(0, 6);
+        el.appendChild(span);
+      }
+      if (!peers.size) el.textContent = 'none';
+    }
+
+    function createPeer(peerId, polite) {
+      const pc = new RTCPeerConnection(rtcConfig);
+      localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+
+      const audio = document.createElement('audio');
+      audio.autoplay = true;
+      document.body.appendChild(audio);
+      pc.ontrack = e => audio.srcObject = e.streams[0];
+
+      pc.onicecandidate = e => {
+        if (e.candidate) ws.send(JSON.stringify({ type: 'signal', to: peerId, data: { type: 'candidate', candidate: e.candidate } }));
+      };
+
+      pc.onnegotiationneeded = async () => {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        ws.send(JSON.stringify({ type: 'signal', to: peerId, data: { type: 'offer', sdp: pc.localDescription } }));
+      };
+
+      peers.set(peerId, { pc, audio, polite });
+    }
+
+    async function handleSignal(from, data) {
+      const entry = peers.get(from);
+      if (!entry) return;
+      const pc = entry.pc;
+
+      if (data.type === 'offer') {
+        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        ws.send(JSON.stringify({ type: 'signal', to: from, data: { type: 'answer', sdp: pc.localDescription } }));
+      } else if (data.type === 'answer') {
+        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+      } else if (data.type === 'candidate') {
+        await pc.addIceCandidate(data.candidate);
+      }
+    }
+
+    function removePeer(id) {
+      const entry = peers.get(id);
+      if (entry) {
+        entry.pc.close();
+        entry.audio.remove();
+        peers.delete(id);
+      }
+    }
+  </script>
+</body>
 </html>
