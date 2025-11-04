@@ -10,7 +10,7 @@
     {
       "new_sqlite_classes": ["RoomDO"],
       "deleted_classes": ["Globe"],
-      "tag": "v1"
+      "tag": "v2"
     }
   ],
   "assets": {
