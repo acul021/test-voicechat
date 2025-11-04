@@ -46,6 +46,8 @@ private sockets: Map<WebSocket, { [key: string]: string }>
   }
 
   async webSocketMessage(ws: WebSocket, message: ArrayBuffer | string) {
+    const from = this.sockets.get(ws)?.id;
+    if (!from) return;
     let msg: {type: string, to?: string};
     if (typeof message === 'string')
     try {msg = JSON.parse(message)} catch {return;}
@@ -53,7 +55,7 @@ private sockets: Map<WebSocket, { [key: string]: string }>
     try {msg = JSON.parse(String.fromCharCode(...new Uint8Array(message)))} catch {return;}
     if (msg.type === 'signal' && msg.to) {
       const target = this.sockets.entries().find(([ws, i]) => i.id === msg.to)?.[0]
-      if (target) target.send(message)
+      if (target) target.send(JSON.stringify({...msg, from}))
     }
   }
 
