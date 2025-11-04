@@ -1,16 +1,19 @@
 import { DurableObject } from "cloudflare:workers";
 
 export class RoomDO extends DurableObject {
-private sockets: Map<WebSocket, { [key: string]: string }>
+  private sockets: Map<WebSocket, { [key: string]: string }>
+  private clients: Map<string, WebSocket>
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env)
     this.sockets = new Map(); // id -> websocket
+    this.clients = new Map(); // id -> websocket
 
     this.ctx.getWebSockets().forEach(ws => {
         let attachment = ws.deserializeAttachment()
         if (attachment) {
             this.sockets.set(ws, {...attachment})
+            this.clients.set(attachment.id, ws)
         }
     })
 
@@ -29,12 +32,13 @@ private sockets: Map<WebSocket, { [key: string]: string }>
     server.serializeAttachment({ id: clientId})
 
     this.sockets.set(server, { id: clientId })
+    this.clients.set(clientId, server)
 
     this.handleConnection(server, clientId);
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  async handleConnection(ws: WebSocket, clientId: string) {
+  handleConnection(ws: WebSocket, clientId: string) {
     ws.send(JSON.stringify({
       type: "welcome",
       id: clientId,
@@ -54,7 +58,7 @@ private sockets: Map<WebSocket, { [key: string]: string }>
     else
     try {msg = JSON.parse(String.fromCharCode(...new Uint8Array(message)))} catch {return;}
     if (msg.type === 'signal' && msg.to) {
-      const target = this.sockets.entries().find(([ws, i]) => i.id === msg.to)?.[0]
+      const target = this.clients.get(msg.to)
       if (target) target.send(JSON.stringify({...msg, from}))
     }
   }
@@ -63,6 +67,7 @@ private sockets: Map<WebSocket, { [key: string]: string }>
     const attachment = this.sockets.get(ws)
     if (attachment) {
     this.sockets.delete(ws)
+    this.clients.delete(attachment.id)
     this.broadcast({type: "peer-leave", id: attachment.id}, attachment.id)
     }
   }
@@ -74,14 +79,5 @@ private sockets: Map<WebSocket, { [key: string]: string }>
         try { sock.send(msg); } catch {}
       }
     }
-  }
-
-  // --- Hibernation API hooks ---
-
-  // Cloudflare calls this to persist open sockets while sleeping
-
-  // Required to allow the DO to hibernate when idle
-  async webSocketDurableObject() {
-    return { acceptsWebSocket: true };
   }
 }
