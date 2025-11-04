@@ -19,7 +19,8 @@
   ],
   "assets": {
     "directory": "public",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    "run_worker_first": true
   },
   "build": {
     "command": "npx esbuild src/client/index.tsx --bundle --outdir=public/dist --splitting --sourcemap --format=esm"
