@@ -61,7 +61,7 @@ private sockets: Map<WebSocket, { [key: string]: string }>
     const attachment = this.sockets.get(ws)
     if (attachment) {
     this.sockets.delete(ws)
-    this.broadcast({type: "peer-leave", id: attachment.clientId}, attachment.clientId)
+    this.broadcast({type: "peer-leave", id: attachment.id}, attachment.id)
     }
   }
 
