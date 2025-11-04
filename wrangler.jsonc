@@ -8,6 +8,10 @@
   ],
   "migrations": [
     {
+      "new_sqlite_classes": ["Globe"],
+      "tag": "v1"
+    }
+    {
       "new_sqlite_classes": ["RoomDO"],
       "deleted_classes": ["Globe"],
       "tag": "v2"
