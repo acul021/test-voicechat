@@ -39,7 +39,9 @@
 
     function handleMessage(evt) {
       const msg = JSON.parse(evt.data);
+      console.log('received', msg);
       if (msg.type === 'welcome') {
+        console.log('My ID is', msg.id, 'peers:', msg.peers);
         myId = msg.id;
         msg.peers.forEach(p => createPeer(p, true));
       } else if (msg.type === 'peer-join') {
